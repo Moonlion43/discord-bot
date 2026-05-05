@@ -5,23 +5,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Set up the bot with a command prefix
+# This example requires the 'message_content' intent.
+class MyClient(discord.Client):
+    async def on_ready(self):
+        print(f'Logged on as {self.user}!')
+
+    async def on_message(self, message):
+        print(f'Message from {message.author}: {message.content}')
+
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix="!", intents=intents)
 
-@bot.event
-async def on_ready():
-    print(f"Logged in as {bot.user}")
-
-# A simple command: !hello
-@bot.command()
-async def hello(ctx):
-    await ctx.send(f"Hey {ctx.author.name}!")
-
-# A simple ping command: !ping
-@bot.command()
-async def ping(ctx):
-    await ctx.send(f"Pong! Latency: {round(bot.latency * 1000)}ms")
-
-bot.run(os.getenv("DISCORD_TOKEN"))
+client = MyClient(intents=intents)
+client.run(os.getenv("DISCORD_TOKEN"))
