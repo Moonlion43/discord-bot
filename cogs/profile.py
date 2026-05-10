@@ -14,6 +14,7 @@
 # To avoid duplicating code, the helper methods just return an embed,
 # and the command methods handle sending it.
 
+import aiohttp
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -27,10 +28,19 @@ class Profile(commands.Cog):
         self.bot = bot
         # Create one RiotAPI instance that all commands share
         self.riot = RiotAPI()
+        self._ddragon_version = None
 
     async def cog_unload(self):
         """Called when the cog is unloaded. Clean up the HTTP session."""
         await self.riot.close()
+
+    async def get_latest_version(self):
+        if self._ddragon_version is None:
+            async with aiohttp.ClientSession() as session:
+                async with session.get("https://ddragon.leagueoflegends.com/api/versions.json") as resp:
+                    versions = await resp.json()
+                    self._ddragon_version = versions[0]
+        return self._ddragon_version
 
     # =====================================================
     # HELPER METHODS (shared logic)
@@ -42,6 +52,9 @@ class Profile(commands.Cog):
         """
         Look up a player's profile. Returns an embed or an error string.
         """
+
+        version = await self.get_latest_version()
+
         # Parse the Riot ID
         if "#" not in riot_id:
             return "Use the format `Name#TAG` (e.g. `Faker#KR1`)"
@@ -65,10 +78,10 @@ class Profile(commands.Cog):
         embed = discord.Embed(
             title=f"{name}#{tag}",
             description=f"Level {level}",
-            color=discord.Color.blue(),
+            color=discord.Color.dark_purple(),
         )
         embed.set_thumbnail(
-            url=f"https://ddragon.leagueoflegends.com/cdn/14.10.1/img/profileicon/{icon_id}.png"
+            url=f"https://ddragon.leagueoflegends.com/cdn/{version}/img/profileicon/{icon_id}.png"
         )
 
         return embed
@@ -97,7 +110,7 @@ class Profile(commands.Cog):
         # Step 3: Build embed
         embed = discord.Embed(
             title=f"Top Masteries — {name}#{tag}",
-            color=discord.Color.gold(),
+            color=discord.Color.dark_purple(),
         )
 
         for i, m in enumerate(masteries, 1):
@@ -106,7 +119,7 @@ class Profile(commands.Cog):
             level = m["championLevel"]
             embed.add_field(
                 name=f"#{i} — Champion ID {champ_id}",
-                value=f"Level {level} • {points:,} pts",
+                value=f"Level {level} - {points:,} pts",
                 inline=False,
             )
 
@@ -120,7 +133,7 @@ class Profile(commands.Cog):
     # interaction.followup.send()  = send the actual response after deferring
 
     @app_commands.command(name="profile", description="Look up a League of Legends player")
-    @app_commands.describe(riot_id="Riot ID in the format Name#TAG")
+    @app_commands.describe(riot_id="Riot ID in the format name#TAG")
     async def profile_slash(self, interaction: discord.Interaction, riot_id: str):
         await interaction.response.defer()  # shows "Bot is thinking..."
         try:

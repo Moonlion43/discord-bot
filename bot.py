@@ -36,7 +36,6 @@ GUILD_ID = 1153780504370348143  # <-- paste your server ID here
 async def on_ready():
     """This runs once when the bot connects to Discord."""
     print(f"Logged in as {bot.user} (ID: {bot.user.id})")
-    print("------")
 
     # Sync slash commands to your server (instant, no waiting)
     # Global sync (without guild) can take up to an hour
@@ -44,7 +43,7 @@ async def on_ready():
         guild = discord.Object(id=GUILD_ID)
         bot.tree.copy_global_to(guild=guild)
         await bot.tree.sync(guild=guild)
-        print("Slash commands synced to your server!")
+        print("Slash commands synced to server!")
     else:
         print("WARNING: Set GUILD_ID in bot.py to enable slash commands!")
 
