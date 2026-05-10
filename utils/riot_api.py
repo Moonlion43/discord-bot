@@ -159,6 +159,16 @@ class RiotAPI:
         platform = self.PLATFORM_ROUTES.get(server, "euw1")
         url = f"https://{platform}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/{puuid}/top?count={count}"
         return await self._request(url) or []
+    
+    async def get_ranked_stats(self, puuid: str, server: str = "euw") -> dict | None:
+        """
+        Get ranked stats in a .json-format.
+        Docs: https://developer.riotgames.com/apis#league-v4/GET_getChallengerLeague
+        """
+        platform = self.PLATFORM_ROUTES.get(server, "euw1")
+        url = f"https://{platform}.api.riotgames.com/lol/league/v4/entries/by-puuid/{puuid}"
+        return await self._request(url)
+
 
     # =====================================================
     # ADD MORE ENDPOINTS HERE

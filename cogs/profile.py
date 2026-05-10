@@ -1,16 +1,3 @@
-# cogs/profile.py — League of Legends profile commands.
-#
-# Each command exists twice:
-#   - !profile Name#TAG   → prefix command (@commands.command)
-#   - /profile riot_id:   → slash command (@app_commands.command)
-#
-# Both versions call the same helper method (_do_profile, _do_mastery)
-# so you only write the logic once.
-#
-# The difference:
-#   - Prefix commands use `ctx` and `ctx.send()`
-#   - Slash commands use `interaction` and `interaction.response.send_message()`
-#
 # To avoid duplicating code, the helper methods just return an embed,
 # and the command methods handle sending it.
 
@@ -22,7 +9,13 @@ from utils.riot_api import RiotAPI
 
 
 class Profile(commands.Cog):
-    """Commands for looking up League of Legends profiles."""
+
+    ranked_tiers = {
+        "I": 1,
+        "II": 2,
+        "III": 3,
+        "IV": 4
+    }
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -41,20 +34,6 @@ class Profile(commands.Cog):
                     versions = await resp.json()
                     self._ddragon_version = versions[0]
         return self._ddragon_version
-    
-    async def get_solo_rank(self, puuid):
-        pass
-
-    async def get_total_games_played(self, puuid):
-        pass
-
-    async def get_soloq_wins(self, puuid):
-        pass
-
-    async def get_soloq_losses(self, puuid):
-        pass
-
-
 
     # =====================================================
     # HELPER METHODS (shared logic)
@@ -85,9 +64,45 @@ class Profile(commands.Cog):
         # Step 2: PUUID → Summoner data
         summoner = await self.riot.get_summoner_by_puuid(puuid)
 
+        ranked_entries = await self.riot.get_ranked_stats(puuid)
+        print(f"PUUID: {puuid}")
+        print(f"Ranked response: {ranked_entries}")
+
         # Step 3: Build embed
         level = summoner.get("summonerLevel", "?") if summoner else "?"
         icon_id = summoner.get("profileIconId", 1) if summoner else 1
+
+        solo = None
+        if ranked_entries:
+            for entry in ranked_entries:
+                if entry["queueType"] == "RANKED_SOLO_5x5":
+                    solo = entry
+                    break
+        
+        flex = None
+        if ranked_entries:
+            for entry in ranked_entries:
+                if entry["queueType"] == "RANKED_FLEX_SR":
+                    flex = entry
+                    break
+        
+        if solo:
+            rank = solo.get("tier", "Unknown") # the actual rank, so emerald/dia
+            tier = solo.get("rank", "?") # the tier, so I, II, III or IV
+            lp = solo.get("leaguePoints", 0)
+            wins = solo.get("wins", 0)
+            losses = solo.get("losses", 0)
+            total_games_played = wins + losses
+            winrate = round((wins/total_games_played)*100, 0) if total_games_played > 0 else 0
+        
+        if flex:
+            flex_rank = flex.get("tier", "Unknown")
+            flex_tier = flex.get("rank", "?")
+            flex_lp = flex.get("leaguePoints", 0)
+            flex_wins = flex.get("wins", 0)
+            flex_losses = flex.get("losses", 0)
+            flex_total_games_played = flex_wins + flex_losses
+            flex_winrate = round((flex_wins/flex_total_games_played)*100, 0) if flex_total_games_played > 0 else 0
 
         embed = discord.Embed(
             title=f"{name}#{tag}",
@@ -98,12 +113,23 @@ class Profile(commands.Cog):
             url=f"https://ddragon.leagueoflegends.com/cdn/{version}/img/profileicon/{icon_id}.png"
         )
 
-        rank = "Gold II"
-        winrate = "58"
-        wins = 13
-        losses = 11
-        total_games_played = 15
-        embed.add_field(name="Ranked stats", value=f"Rank: {rank}\n Winratio: {wins}W/{losses}L, {winrate}% \n Total games played: {total_games_played}", inline=False)
+        # solo/duo
+        if solo:
+            embed.add_field(name="Ranked Solo/Duo ", 
+                            value=f"""Rank: {rank.lower().capitalize()} {self.ranked_tiers[tier]} {lp} LP
+                            Winratio: {wins}W {losses}L, {winrate}%
+                            Total games played: {total_games_played}""", inline=False)
+        else:
+            embed.add_field(name="Ranked Solo/Duo", value="Unranked",inline=False)
+
+        # flex
+        if flex:
+            embed.add_field(name="Ranked Flex ", 
+                            value=f"""Rank: {flex_rank.lower().capitalize()} {self.ranked_tiers[flex_tier]} {flex_lp} LP
+                            Winratio: {flex_wins}W {flex_losses}L, {flex_winrate}% 
+                            Total games played: {flex_total_games_played}""", inline=False)
+        else:
+            embed.add_field(name="Ranked Flex", value="Unranked",inline=False)
 
         return embed
 
