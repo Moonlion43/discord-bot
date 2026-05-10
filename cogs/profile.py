@@ -41,6 +41,20 @@ class Profile(commands.Cog):
                     versions = await resp.json()
                     self._ddragon_version = versions[0]
         return self._ddragon_version
+    
+    async def get_solo_rank(self, puuid):
+        pass
+
+    async def get_total_games_played(self, puuid):
+        pass
+
+    async def get_soloq_wins(self, puuid):
+        pass
+
+    async def get_soloq_losses(self, puuid):
+        pass
+
+
 
     # =====================================================
     # HELPER METHODS (shared logic)
@@ -84,6 +98,13 @@ class Profile(commands.Cog):
             url=f"https://ddragon.leagueoflegends.com/cdn/{version}/img/profileicon/{icon_id}.png"
         )
 
+        rank = "Gold II"
+        winrate = "58"
+        wins = 13
+        losses = 11
+        total_games_played = 15
+        embed.add_field(name="Ranked stats", value=f"Rank: {rank}\n Winratio: {wins}W/{losses}L, {winrate}% \n Total games played: {total_games_played}", inline=False)
+
         return embed
 
     async def _do_mastery(self, riot_id: str) -> discord.Embed | str:
@@ -119,7 +140,7 @@ class Profile(commands.Cog):
             level = m["championLevel"]
             embed.add_field(
                 name=f"#{i} — Champion ID {champ_id}",
-                value=f"Level {level} - {points:,} pts",
+                value=f"Mastery {level} - {points:,} pts",
                 inline=False,
             )
 
