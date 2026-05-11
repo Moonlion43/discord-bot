@@ -3,6 +3,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from utils.riot_api import RiotAPI
+from utils.player import FakePlayer
 
 class QueueView(discord.ui.View):
     def __init__(self):
@@ -21,12 +22,15 @@ class QueueView(discord.ui.View):
             return await interaction.response.send_message("You're already in the queue.", ephemeral=True)
         self.players.append(interaction.user)
 
-        if len(self.players) >= 10:
-            # Queue full — move to team selection vote
-            vote_view = TeamSelectionVote(self.players)
-            await interaction.response.edit_message(embed=vote_view.build_embed(), view=vote_view)
-        else:
-            await interaction.response.edit_message(embed=self._build_embed(), view=self)
+        # Fill remaining slots with fake players for testing
+        fake_names = ["Faker", "Chovy", "Zeus", "Keria", "Gumayusi",
+                    "Caps", "Jankos", "Oner", "Deft", "Ruler"]
+        while len(self.players) < 10:
+            self.players.append(FakePlayer(fake_names[len(self.players)]))
+
+        vote_view = TeamSelectionVote(self.players)
+        await interaction.response.edit_message(embed=vote_view.build_embed(), view=vote_view)
+        vote_view.message = await interaction.original_response()
 
     @discord.ui.button(label="Leave Queue", style=discord.ButtonStyle.primary)
     async def leave(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -37,7 +41,7 @@ class QueueView(discord.ui.View):
 
 class TeamSelectionVote(discord.ui.View):
     def __init__(self, players: list):
-        super().__init__(timeout=60)
+        super().__init__(timeout=10)
         self.players = players
         self.votes = {"random": set(), "captains": set(), "balanced": set()}
 
@@ -45,7 +49,7 @@ class TeamSelectionVote(discord.ui.View):
         embed = discord.Embed(title="How should teams be picked?", color=discord.Color.gold())
         for method, voters in self.votes.items():
             embed.add_field(name=f"{method.capitalize()} ({len(voters)})", value="\u200b", inline=True)
-        embed.set_footer(text="Vote below! Most votes after 60s wins.")
+        embed.set_footer(text="Vote below! Most votes after 60 s wins.")
         return embed
 
     async def _handle_vote(self, interaction: discord.Interaction, choice: str):
@@ -98,9 +102,9 @@ class TeamSelectionVote(discord.ui.View):
         )
         gromp_names = "\n".join(p.display_name for p in teams["gromp"])
         krug_names = "\n".join(p.display_name for p in teams["krug"])
-        embed.add_field(name="Team Gromp", value=gromp_names, inline=True)
+        embed.add_field(name="Team Gromp <:gromp:1503093471676858428>", value=gromp_names, inline=True)
         embed.add_field(name="\u200b", value="\u200b", inline=True)
-        embed.add_field(name="Team Krug", value=krug_names, inline=True)
+        embed.add_field(name="Team Krug <:krug:1503094259744510196>", value=krug_names, inline=True)
         return embed
 
 
