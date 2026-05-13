@@ -46,7 +46,7 @@ class TeamSelectionVote(discord.ui.View):
         self.votes = {"random": set(), "captains": set(), "balanced": set()}
 
     def build_embed(self):
-        embed = discord.Embed(title="How should teams be picked?", color=discord.Color.gold())
+        embed = discord.Embed(title="How should teams be picked?", color=discord.Color.dark_purple())
         for method, voters in self.votes.items():
             embed.add_field(name=f"{method.capitalize()} ({len(voters)})", value="\u200b", inline=True)
         embed.set_footer(text="Vote below! Most votes after 60 s wins.")
@@ -75,9 +75,9 @@ class TeamSelectionVote(discord.ui.View):
 
     async def on_timeout(self):
         # Pick the winner and move to team creation
-        winner = max(self.votes, key=lambda k: len(self.votes[k]))
-        teams = self._make_teams(winner)
-        embed = self._build_teams_embed(teams, winner)
+        winning_method = max(self.votes, key=lambda k: len(self.votes[k]))
+        teams = self._make_teams(winning_method)
+        embed = self._build_teams_embed(teams, winning_method)
         # Disable all buttons
         for child in self.children:
             child.disabled = True
@@ -85,20 +85,38 @@ class TeamSelectionVote(discord.ui.View):
         if hasattr(self, "message"):
             await self.message.edit(embed=embed, view=self)
 
-    def _make_teams(self, method: str) -> dict:
+    def make_random_team(self) -> dict:
         import random
         shuffled = self.players.copy()
         random.shuffle(shuffled)
-        # For now just split randomly — expand captains/balanced later
         return {
             "gromp": shuffled[:5],
             "krug": shuffled[5:]
-        }
+                }
+
+    def make_captains_team(self) -> dict:
+        return {}
+
+    def make_balanced_team(self) -> dict:
+        return {}
+
+    def _make_teams(self, method: str) -> dict:
+        match method:
+            case "random":
+                return self.make_random_team()
+            case "captains":
+                return self.make_captains_team()
+            case "balanced":
+                return self.make_balanced_team()
+            case _:
+                print("Invalid team method!")
+                return {}
+                
 
     def _build_teams_embed(self, teams: dict, method: str) -> discord.Embed:
         embed = discord.Embed(
-            title=f"Teams (picked by {method})",
-            color=discord.Color.green()
+            title=f"Final teams",
+            color=discord.Color.dark_purple()
         )
         gromp_names = "\n".join(p.display_name for p in teams["gromp"])
         krug_names = "\n".join(p.display_name for p in teams["krug"])
